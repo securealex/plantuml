@@ -42,13 +42,17 @@ import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -71,7 +75,10 @@ import javax.swing.ListModel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
+import org.apache.batik.bridge.UpdateManager;
 import org.apache.batik.swing.JSVGCanvas;
+import org.apache.batik.swing.JSVGScrollPane;
+import org.apache.batik.swing.gvt.AbstractPanInteractor;
 
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
@@ -103,7 +110,7 @@ class ImageWindow2 extends JFrame {
 	private final ListModel listModel;
 	private int index;
 	private int zoomFactor = 0;
-	private JSVGCanvas svgCanvas;
+	private JSVGScrollPane svgPanel;
 
 	private enum SizeMode {
 		FULL_SIZE, ZOOM_FIT, WIDTH_FIT
@@ -320,17 +327,73 @@ class ImageWindow2 extends JFrame {
 
 	}
 
-	private JSVGCanvas buildScrollablePictureBySvg(File svg) {
-		if (svgCanvas == null) {
+	private JSVGScrollPane buildScrollablePictureBySvg(File svg) {
+		if (svgPanel == null) {
 			svgCanvas = new JSVGCanvas();
-			svgCanvas.setSize(800, 600);
+			svgPanel = new JSVGScrollPane(svgCanvas);
+			svgCanvas.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
+			svgCanvas.setEnableImageZoomInteractor(false);
+	        svgCanvas.setEnablePanInteractor(false);
+	        svgCanvas.setEnableRotateInteractor(false);
+	        svgCanvas.setEnableZoomInteractor(false);
+			svgCanvas.getInteractors().add(new AbstractPanInteractor() {
+
+				@Override
+				public boolean startInteraction(InputEvent ie) {
+
+					int mods = ie.getModifiers();
+					return ie.getID() == MouseEvent.MOUSE_PRESSED && (mods & InputEvent.BUTTON1_MASK) != 0;
+				}
+			});
+			svgCanvas.addMouseWheelListener(new MouseWheelListener() {
+
+				@Override
+				public void mouseWheelMoved(MouseWheelEvent e) {
+
+					UpdateManager updateManager = svgCanvas.getUpdateManager();
+					if (updateManager != null) {
+						updateManager.getUpdateRunnableQueue().invokeLater(new Runnable() {
+							public void run() {
+								double scale = 1 - e.getUnitsToScroll() / 10.0;
+								double tx = -e.getX() * (scale - 1);
+								double ty = -e.getY() * (scale - 1);
+								// System.out.println("scale: " + scale);
+								// System.out.println("scale: " + svgCanvas.getRenderingTransform().getScaleX());
+								AffineTransform at = new AffineTransform();
+								if (e.isAltDown()) {
+									at.translate(tx, ty);
+									at.scale(scale, scale);
+								} else if (e.isShiftDown()) {
+									at.translate(-tx, 0);
+								} else {
+									at.translate(0, -ty);
+								}
+								at.concatenate(svgCanvas.getRenderingTransform());
+								// System.out.println("new scale: " + at.getScaleX());
+								if (at.getScaleX() > 0.1) {
+									svgCanvas.setRenderingTransform(at);
+								}
+							}
+						});
+					}
+					e.consume();
+				}
+			});
+			// svgCanvas.addSVGDocumentLoaderListener(new SVGDocumentLoaderAdapter() {
+			// public void documentLoadingCompleted(SVGDocumentLoaderEvent e) {
+			// SVGDocument doc = svgCanvas.getSVGDocument();
+			// if (doc != null) {
+			// doc.getRootElement().setAttribute("viewBox", "0 0 1600 1080");
+			// }
+			// }
+			// });
 		}
 		try {
-			svgCanvas.setURI(svg.toURI().toURL().toString());
+			svgPanel.getCanvas().setURI(svg.toURI().toURL().toString());
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		}
-		return svgCanvas;
+		return svgPanel;
 	}
 
 	private ScrollablePicture buildScrollablePictureByPng(File png) {
@@ -422,6 +485,7 @@ class ImageWindow2 extends JFrame {
 
 	private int v1;
 	private int v2;
+	private JSVGCanvas svgCanvas;
 
 	public void refreshImage(boolean external) {
 		final JScrollBar bar1 = scrollPane.getVerticalScrollBar();
