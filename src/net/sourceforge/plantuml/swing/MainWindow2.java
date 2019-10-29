@@ -91,7 +91,7 @@ public class MainWindow2 extends JFrame {
 	final private static String KEY_DIR = "cur";
 	final private static String KEY_PATTERN = "pat";
 
-	private final JList jList1 = new JList();
+	private final JList scriptList1 = new JList();
 	private final JScrollPane scrollPane;
 	private final JButton changeDirButton = new JButton("Change Directory");
 	private final JTextField extensions = new JTextField();
@@ -163,7 +163,7 @@ public class MainWindow2 extends JFrame {
 		dirWatcher = new DirWatcher2(dir, option, getRegexpPattern(getExtensions()));
 
 		Log.info("Showing MainWindow");
-		scrollPane = new JScrollPane(jList1);
+		scrollPane = new JScrollPane(scriptList1);
 		scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
 		final JPanel south = new JPanel(new BorderLayout());
@@ -188,27 +188,27 @@ public class MainWindow2 extends JFrame {
 			public void mouseClicked(MouseEvent e) {
 				try {
 					if (e.getClickCount() == 2) {
-						final int index = jList1.locationToIndex(e.getPoint());
-						doubleClick((SimpleLine2) jList1.getModel().getElementAt(index), jList1.getModel(), index);
+						final int index = scriptList1.locationToIndex(e.getPoint());
+						doubleClick((SimpleLine2) scriptList1.getModel().getElementAt(index), scriptList1.getModel(), index);
 					}
 				} catch (Exception ex) {
 
 				}
 			}
 		};
-		jList1.addMouseListener(mouseListener);
+		scriptList1.addMouseListener(mouseListener);
 		changeDirButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.err.println("Opening Directory Window");
 				displayDialogChangeDir();
 			}
 		});
-		jList1.addKeyListener(new KeyAdapter() {
+		scriptList1.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-					final int index = jList1.getSelectedIndex();
-					doubleClick((SimpleLine2) jList1.getModel().getElementAt(index), jList1.getModel(), index);
+					final int index = scriptList1.getSelectedIndex();
+					doubleClick((SimpleLine2) scriptList1.getModel().getElementAt(index), scriptList1.getModel(), index);
 				}
 			}
 
@@ -310,8 +310,8 @@ public class MainWindow2 extends JFrame {
 		setTitle(dir.getAbsolutePath());
 		Log.info("Creating DirWatcher");
 		currentDirectoryListing2.clear();
-		jList1.setListData(new Vector<SimpleLine2>(currentDirectoryListing2));
-		jList1.setVisible(true);
+		scriptList1.setListData(new Vector<SimpleLine2>(currentDirectoryListing2));
+		scriptList1.setVisible(true);
 	}
 
 	private void doubleClick(SimpleLine2 simpleLine, ListModel listModel, int index) {
@@ -333,8 +333,8 @@ public class MainWindow2 extends JFrame {
 				try {
 					final boolean changed = refreshDir();
 					if (changed) {
-						jList1.setListData(new Vector<SimpleLine2>(currentDirectoryListing2));
-						jList1.setVisible(true);
+						scriptList1.setListData(new Vector<SimpleLine2>(currentDirectoryListing2));
+						scriptList1.setVisible(true);
 					}
 				} catch (IOException e) {
 					e.printStackTrace();

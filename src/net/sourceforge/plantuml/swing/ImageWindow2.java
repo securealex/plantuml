@@ -54,6 +54,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.Arrays;
 import java.util.prefs.Preferences;
 
@@ -61,6 +62,7 @@ import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
@@ -68,6 +70,8 @@ import javax.swing.JScrollPane;
 import javax.swing.ListModel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
+
+import org.apache.batik.swing.JSVGCanvas;
 
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
@@ -99,6 +103,7 @@ class ImageWindow2 extends JFrame {
 	private final ListModel listModel;
 	private int index;
 	private int zoomFactor = 0;
+	private JSVGCanvas svgCanvas;
 
 	private enum SizeMode {
 		FULL_SIZE, ZOOM_FIT, WIDTH_FIT
@@ -301,24 +306,44 @@ class ImageWindow2 extends JFrame {
 		}
 	}
 
-	private ScrollablePicture buildScrollablePicture() {
+	private JComponent buildScrollablePicture() {
 		final GeneratedImage generatedImage = simpleLine2.getGeneratedImage();
 		if (generatedImage == null) {
 			return null;
 		}
 		final File png = generatedImage.getPngFile();
+		if (png.getName().toLowerCase().endsWith("svg")) {
+			return buildScrollablePictureBySvg(png);
+		} else {
+			return buildScrollablePictureByPng(png);
+		}
+
+	}
+
+	private JSVGCanvas buildScrollablePictureBySvg(File svg) {
+		if (svgCanvas == null) {
+			svgCanvas = new JSVGCanvas();
+			svgCanvas.setSize(800, 600);
+		}
+		try {
+			svgCanvas.setURI(svg.toURI().toURL().toString());
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+		return svgCanvas;
+	}
+
+	private ScrollablePicture buildScrollablePictureByPng(File png) {
 		BufferedImage image = null;
 		try {
 			image = ImageIO.read(new File(png.getAbsolutePath()));
 			if (sizeMode == SizeMode.ZOOM_FIT) {
 				final Dimension imageDim = new Dimension(image.getWidth(), image.getHeight());
-				final Dimension newImgDim = ImageHelper
-						.getScaledDimension(imageDim, scrollPane.getViewport().getSize());
+				final Dimension newImgDim = ImageHelper.getScaledDimension(imageDim, scrollPane.getViewport().getSize());
 				image = ImageHelper.getScaledInstance(image, newImgDim, getHints(), true);
 			} else if (sizeMode == SizeMode.WIDTH_FIT) {
 				final Dimension imageDim = new Dimension(image.getWidth(), image.getHeight());
-				final Dimension newImgDim = ImageHelper.getScaledDimensionWidthFit(imageDim, scrollPane.getViewport()
-						.getSize());
+				final Dimension newImgDim = ImageHelper.getScaledDimensionWidthFit(imageDim, scrollPane.getViewport().getSize());
 				image = ImageHelper.getScaledInstance(image, newImgDim, getHints(), false);
 			} else if (zoomFactor != 0) {
 				final Dimension imageDim = new Dimension(image.getWidth(), image.getHeight());
@@ -328,12 +353,11 @@ class ImageWindow2 extends JFrame {
 		} catch (IOException ex) {
 			final String msg = "Error reading file: " + ex.toString();
 			final TextBlockBackcolored error = GraphicStrings.createForError(Arrays.asList(msg), false);
-			final ImageBuilder imageBuilder = new ImageBuilder(new ColorMapperIdentity(), 1.0, error.getBackcolor(),
-					null, null, 0, 0, null, false);
+			final ImageBuilder imageBuilder = new ImageBuilder(new ColorMapperIdentity(), 1.0, error.getBackcolor(), null, null, 0, 0, null, false);
 			imageBuilder.setUDrawable(error);
 			final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			try {
-				imageBuilder.writeImageTOBEMOVED(new FileFormatOption(FileFormat.PNG), 42, baos);
+				imageBuilder.writeImageTOBEMOVED(new FileFormatOption(FileFormat.DEFAULT_FORMAT), 42, baos);
 				baos.close();
 				image = ImageIO.read(new ByteArrayInputStream(baos.toByteArray()));
 			} catch (IOException e) {
@@ -367,8 +391,7 @@ class ImageWindow2 extends JFrame {
 	}
 
 	private RenderingHints getHints() {
-		final RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION,
-				RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		final RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		hints.put(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		hints.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 		return hints;

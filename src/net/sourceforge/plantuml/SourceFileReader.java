@@ -52,12 +52,12 @@ public class SourceFileReader extends SourceFileReaderAbstract implements ISourc
 
 	public SourceFileReader(File file, File outputDirectory, String charset) throws IOException {
 		this(Defines.createWithFileName(file), file, outputDirectory, Collections.<String> emptyList(), charset,
-				new FileFormatOption(FileFormat.PNG));
+				new FileFormatOption(FileFormat.DEFAULT_FORMAT));
 	}
 
 	public SourceFileReader(final File file, File outputDirectory) throws IOException {
 		this(Defines.createWithFileName(file), file, outputDirectory, Collections.<String> emptyList(), null,
-				new FileFormatOption(FileFormat.PNG));
+				new FileFormatOption(FileFormat.DEFAULT_FORMAT));
 	}
 
 	public SourceFileReader(final File file, File outputDirectory, FileFormatOption fileFormatOption)

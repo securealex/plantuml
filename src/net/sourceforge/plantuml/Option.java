@@ -105,9 +105,9 @@ public class Option {
 	}
 
 	public Option(String... arg) throws InterruptedException, IOException {
-		if (arg.length == 0) {
+//		if (arg.length == 0) {
 			OptionFlags.getInstance().setGui(true);
-		}
+//		}
 		initInclude(GraphvizUtils.getenvDefaultConfigFilename());
 		for (int i = 0; i < arg.length; i++) {
 			String s = arg[i];

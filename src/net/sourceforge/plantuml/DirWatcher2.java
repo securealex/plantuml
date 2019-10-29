@@ -38,6 +38,7 @@ package net.sourceforge.plantuml;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,6 +60,7 @@ public class DirWatcher2 {
 
 	final private Map<File, FileWatcher> modifieds = new ConcurrentHashMap<File, FileWatcher>();
 	final private ExecutorService executorService;
+	Map<File, Long> fileDates = new HashMap<File, Long>();
 
 	public DirWatcher2(File dir, Option option, String pattern) {
 		this.dir = dir;
@@ -71,38 +73,39 @@ public class DirWatcher2 {
 
 	public Map<File, Future<List<GeneratedImage>>> buildCreatedFiles() throws IOException, InterruptedException {
 		final Map<File, Future<List<GeneratedImage>>> result = new TreeMap<File, Future<List<GeneratedImage>>>();
-		if (dir.listFiles() != null) {
-			for (final File f : dir.listFiles()) {
+		File[] listFiles = dir.listFiles();
+		if (listFiles != null) {
+			for (final File f : listFiles) {
 				if (f.isFile() == false) {
 					continue;
 				}
+				if (fileDates.containsKey(f) && fileDates.get(f) == f.lastModified()) {
+					continue;
+				}
+				fileDates.put(f, f.lastModified());
 				if (fileToProcess(f.getName()) == false) {
 					continue;
 				}
 				final FileWatcher watcher = modifieds.get(f);
 
 				if (watcher == null || watcher.hasChanged()) {
-					final SourceFileReader sourceFileReader = new SourceFileReader(option.getDefaultDefines(f), f,
-							option.getOutputDir(), option.getConfig(), option.getCharset(),
-							option.getFileFormatOption());
+					final SourceFileReader sourceFileReader = new SourceFileReader(option.getDefaultDefines(f), f, option.getOutputDir(), option.getConfig(),
+							option.getCharset(), option.getFileFormatOption());
 					modifieds.put(f, new FileWatcher(Collections.singleton(f)));
-					final Future<List<GeneratedImage>> value = executorService
-							.submit(new Callable<List<GeneratedImage>>() {
-								public List<GeneratedImage> call() throws Exception {
-									try {
-										final List<GeneratedImage> generatedImages = sourceFileReader
-												.getGeneratedImages();
-										final Set<File> files = FileWithSuffix.convert(sourceFileReader
-												.getIncludedFiles());
-										files.add(f);
-										modifieds.put(f, new FileWatcher(files));
-										return Collections.unmodifiableList(generatedImages);
-									} catch (Exception e) {
-										e.printStackTrace();
-										return Collections.emptyList();
-									}
-								}
-							});
+					final Future<List<GeneratedImage>> value = executorService.submit(new Callable<List<GeneratedImage>>() {
+						public List<GeneratedImage> call() throws Exception {
+							try {
+								final List<GeneratedImage> generatedImages = sourceFileReader.getGeneratedImages();
+								final Set<File> files = FileWithSuffix.convert(sourceFileReader.getIncludedFiles());
+								files.add(f);
+								modifieds.put(f, new FileWatcher(files));
+								return Collections.unmodifiableList(generatedImages);
+							} catch (Exception e) {
+								e.printStackTrace();
+								return Collections.emptyList();
+							}
+						}
+					});
 					result.put(f, value);
 				}
 			}

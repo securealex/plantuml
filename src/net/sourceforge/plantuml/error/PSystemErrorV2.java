@@ -49,4 +49,9 @@ public class PSystemErrorV2 extends PSystemError {
 
 	}
 
+	@Override
+	public String toString() {
+		return "PSystemErrorV2 [trace=" + trace + ", singleError=" + singleError + ", description=" + getDescription() + "]";
+	}
+
 }

@@ -52,11 +52,30 @@
 			<version>1.10.7</version>
 		</dependency>
 		<dependency>
+			<groupId>org.apache.xmlgraphics</groupId>
+			<artifactId>my-batik-awt-util</artifactId>
+			<version>1.11</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/my-batik-awt-util-1.11.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.xmlgraphics</groupId>
+			<artifactId>batik-all</artifactId>
+			<version>1.11</version>
+			<type>pom</type>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.xmlgraphics</groupId>
+					<artifactId>batik-awt-util</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
 			<groupId>com.sun</groupId>
 			<artifactId>tools</artifactId>
-			<version>1.6</version>
+			<version>1.8.0</version>
 			<scope>system</scope>
-			<systemPath>C:\Program Files\Java\jdk1.8.0_171\lib\tools.jar</systemPath>
+			<systemPath>D:\Program Files\Java\jdk1.8.0_221\lib\tools.jar</systemPath>
 		</dependency>
 	</dependencies>
 

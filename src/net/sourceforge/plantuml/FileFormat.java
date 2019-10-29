@@ -65,6 +65,7 @@ public enum FileFormat {
 	 * 
 	 * @return a string starting by a point.
 	 */
+	public static FileFormat DEFAULT_FORMAT = PNG;
 	public String getFileSuffix() {
 		if (name().startsWith("XMI")) {
 			return ".xmi";
