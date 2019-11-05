@@ -38,11 +38,12 @@ package net.sourceforge.plantuml.swing;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -78,7 +79,14 @@ import javax.swing.WindowConstants;
 import org.apache.batik.bridge.UpdateManager;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.JSVGScrollPane;
-import org.apache.batik.swing.gvt.AbstractPanInteractor;
+import org.apache.batik.swing.svg.SVGDocumentLoaderAdapter;
+import org.apache.batik.swing.svg.SVGDocumentLoaderEvent;
+import org.w3c.dom.Node;
+import org.w3c.dom.events.Event;
+import org.w3c.dom.events.EventListener;
+import org.w3c.dom.events.EventTarget;
+import org.w3c.dom.svg.SVGDocument;
+import org.w3c.dom.svg.SVGRectElement;
 
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
@@ -92,6 +100,8 @@ import net.sourceforge.plantuml.version.PSystemVersion;
 
 class ImageWindow2 extends JFrame {
 
+	private static final double ZOOM_IN_SCALE = -0.1;
+	private static final double ZOOM_OUT_SCALE = 0.1;
 	private final static Preferences prefs = Preferences.userNodeForPackage(ImageWindow2.class);
 	private final static String KEY_ZOOM_FIT = "zoomfit";
 	private final static String KEY_WIDTH_FIT = "widthfit";
@@ -111,6 +121,7 @@ class ImageWindow2 extends JFrame {
 	private int index;
 	private int zoomFactor = 0;
 	private JSVGScrollPane svgPanel;
+	private double hwRate;
 
 	private enum SizeMode {
 		FULL_SIZE, ZOOM_FIT, WIDTH_FIT
@@ -186,7 +197,7 @@ class ImageWindow2 extends JFrame {
 		scrollPane = new JScrollPane(buildScrollablePicture());
 		getContentPane().add(north, BorderLayout.NORTH);
 		getContentPane().add(scrollPane, BorderLayout.CENTER);
-		setSize(640, 400);
+		setSize(600, 400);
 		this.setLocationRelativeTo(this.getParent());
 		setVisible(true);
 		setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -327,49 +338,41 @@ class ImageWindow2 extends JFrame {
 
 	}
 
-	private JSVGScrollPane buildScrollablePictureBySvg(File svg) {
-		if (svgPanel == null) {
+	private JSVGCanvas buildScrollablePictureBySvg(File svg) {
+		if (svgCanvas == null) {
 			svgCanvas = new JSVGCanvas();
-			svgPanel = new JSVGScrollPane(svgCanvas);
-			svgCanvas.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
-			svgCanvas.setEnableImageZoomInteractor(false);
-	        svgCanvas.setEnablePanInteractor(false);
-	        svgCanvas.setEnableRotateInteractor(false);
-	        svgCanvas.setEnableZoomInteractor(false);
-			svgCanvas.getInteractors().add(new AbstractPanInteractor() {
-
-				@Override
-				public boolean startInteraction(InputEvent ie) {
-
-					int mods = ie.getModifiers();
-					return ie.getID() == MouseEvent.MOUSE_PRESSED && (mods & InputEvent.BUTTON1_MASK) != 0;
-				}
-			});
+			// svgPanel = new JSVGScrollPane(svgCanvas);
+			// svgCanvas.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
+			svgCanvas.setDocumentState(JSVGCanvas.ALWAYS_INTERACTIVE);
+			svgCanvas.setEnableImageZoomInteractor(true);
+			svgCanvas.setEnablePanInteractor(true);
+			// svgCanvas.setEnableRotateInteractor(false);
+			svgCanvas.setEnableZoomInteractor(true);
 			svgCanvas.addMouseWheelListener(new MouseWheelListener() {
+				private boolean isWheelDown(final MouseWheelEvent e) {
+					return e.getUnitsToScroll() > 0;
+				}
 
 				@Override
-				public void mouseWheelMoved(MouseWheelEvent e) {
+				public void mouseWheelMoved(final MouseWheelEvent e) {
 
 					UpdateManager updateManager = svgCanvas.getUpdateManager();
 					if (updateManager != null) {
 						updateManager.getUpdateRunnableQueue().invokeLater(new Runnable() {
 							public void run() {
-								double scale = 1 - e.getUnitsToScroll() / 10.0;
-								double tx = -e.getX() * (scale - 1);
-								double ty = -e.getY() * (scale - 1);
-								// System.out.println("scale: " + scale);
-								// System.out.println("scale: " + svgCanvas.getRenderingTransform().getScaleX());
+								double scale = isWheelDown(e) ? ZOOM_OUT_SCALE : ZOOM_IN_SCALE;
+								double tx = isWheelDown(e) ? 100 : -100;
+								double ty = isWheelDown(e) ? 100 : -100;
 								AffineTransform at = new AffineTransform();
-								if (e.isAltDown()) {
-									at.translate(tx, ty);
-									at.scale(scale, scale);
+								if (e.isControlDown()) {
+									at.translate(tx, 0);
+									at.scale(1 - scale, 1 - scale);
 								} else if (e.isShiftDown()) {
 									at.translate(-tx, 0);
 								} else {
 									at.translate(0, -ty);
 								}
 								at.concatenate(svgCanvas.getRenderingTransform());
-								// System.out.println("new scale: " + at.getScaleX());
 								if (at.getScaleX() > 0.1) {
 									svgCanvas.setRenderingTransform(at);
 								}
@@ -379,21 +382,83 @@ class ImageWindow2 extends JFrame {
 					e.consume();
 				}
 			});
-			// svgCanvas.addSVGDocumentLoaderListener(new SVGDocumentLoaderAdapter() {
-			// public void documentLoadingCompleted(SVGDocumentLoaderEvent e) {
-			// SVGDocument doc = svgCanvas.getSVGDocument();
-			// if (doc != null) {
-			// doc.getRootElement().setAttribute("viewBox", "0 0 1600 1080");
-			// }
-			// }
-			// });
+			svgCanvas.addSVGDocumentLoaderListener(new SVGDocumentLoaderAdapter() {
+				private void installMouseClickHandler(Node node) {
+					if (node.getNodeName().contains("rect") && node instanceof EventTarget) {
+						((EventTarget) node).addEventListener("click", new EventListener() {
+							@Override
+							public void handleEvent(Event evt) {
+								SVGRectElement element = ((SVGRectElement) evt.getCurrentTarget());
+								for (int index = 0; index < element.getAttributes().getLength(); index++) {
+									System.out.println(String.format("Attribute %s: %s", element.getAttributes().item(index).getNodeName(),
+											element.getAttributes().item(index).getNodeValue()));
+								}
+							}
+						}, false);
+						// ((EventTarget) node).addEventListener("mouseover", new EventListener() {
+						// @Override
+						// public void handleEvent(Event evt) {
+						// System.out.println("Mouse is overing.");
+						// }
+						// }, false);
+					}
+					for (int index = 0; index < node.getChildNodes().getLength(); index++) {
+						installMouseClickHandler(node.getChildNodes().item(index));
+					}
+				}
+
+				public void documentLoadingCompleted(SVGDocumentLoaderEvent e) {
+					SVGDocument doc = svgCanvas.getSVGDocument();
+					if (doc != null) {
+						installMouseClickHandler(doc);
+						String width = doc.getRootElement().getAttribute("width");
+						String height = doc.getRootElement().getAttribute("height");
+						if (width.endsWith("px")) {
+							width = width.substring(0, width.length() - 2);
+						}
+						if (height.endsWith("px")) {
+							height = height.substring(0, height.length() - 2);
+						}
+						hwRate = Double.parseDouble(height) / Double.parseDouble(width);
+
+						Dimension dimension = getScreenSize(ImageWindow2.this);
+
+						double maxWidth = dimension.getWidth() - 200;
+						double maxHeight = dimension.getHeight() - 100;
+
+						int newHeight = (int) Math.min(maxHeight, Integer.parseInt(height) + 100);
+						int newWidth = (int) (newHeight / hwRate);
+						if (newWidth > maxWidth) {
+							newWidth = (int) Math.min(Integer.parseInt(width) + 150, maxWidth);
+							newHeight = (int) (newWidth * hwRate);
+						}
+						assert newWidth <= maxWidth && newHeight <= maxHeight;
+						ImageWindow2.this.setBounds((int) (dimension.getWidth() - newWidth) / 2, (int) (dimension.getHeight() - newHeight) / 2, newWidth,
+								newHeight);
+						ImageWindow2.this.invalidate();
+					}
+				}
+			});
+			try {
+				svgCanvas.setURI(svg.toURI().toURL().toString());
+			} catch (MalformedURLException e) {
+				e.printStackTrace();
+			}
 		}
-		try {
-			svgPanel.getCanvas().setURI(svg.toURI().toURL().toString());
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		}
-		return svgPanel;
+		return svgCanvas;
+	}
+
+	public static Dimension getScreenSize(Window window) {
+		Dimension screensize = Toolkit.getDefaultToolkit().getScreenSize();
+		int w = screensize.width;
+		int h = screensize.height;
+
+		Insets screenInsets = Toolkit.getDefaultToolkit().getScreenInsets(window.getGraphicsConfiguration());
+
+		w = w - (screenInsets.left + screenInsets.right);
+		h = h - (screenInsets.top + screenInsets.bottom);
+
+		return new Dimension(w, h);
 	}
 
 	private ScrollablePicture buildScrollablePictureByPng(File png) {

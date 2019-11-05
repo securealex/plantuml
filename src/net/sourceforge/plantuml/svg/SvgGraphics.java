@@ -57,6 +57,11 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.w3c.dom.CDATASection;
+import org.w3c.dom.Comment;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import net.sourceforge.plantuml.Log;
 import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.SignatureUtils;
@@ -69,11 +74,6 @@ import net.sourceforge.plantuml.ugraphic.ColorMapper;
 import net.sourceforge.plantuml.ugraphic.UPath;
 import net.sourceforge.plantuml.ugraphic.USegment;
 import net.sourceforge.plantuml.ugraphic.USegmentType;
-
-import org.w3c.dom.CDATASection;
-import org.w3c.dom.Comment;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 public class SvgGraphics {
 
@@ -89,7 +89,7 @@ public class SvgGraphics {
 	// http://www.svgbasics.com/filters3.html
 	// http://www.w3schools.com/svg/svg_feoffset.asp
 	// http://www.adobe.com/svg/demos/samples.html
-
+	private static int RECT_INDEX;
 	private static final String XLINK_TITLE1 = "title";
 	private static final String XLINK_TITLE2 = "xlink:title";
 	private static final String XLINK_HREF1 = "href";
@@ -128,8 +128,7 @@ public class SvgGraphics {
 		this(svgDimensionStyle, minDim, null, scale, hover, seed);
 	}
 
-	public SvgGraphics(boolean svgDimensionStyle, Dimension2D minDim, String backcolor, double scale, String hover,
-			long seed) {
+	public SvgGraphics(boolean svgDimensionStyle, Dimension2D minDim, String backcolor, double scale, String hover, long seed) {
 		try {
 			this.svgDimensionStyle = svgDimensionStyle;
 			this.scale = scale;
@@ -234,8 +233,7 @@ public class SvgGraphics {
 
 	public void svgArcEllipse(double rx, double ry, double x1, double y1, double x2, double y2) {
 		if (hidden == false) {
-			final String path = "M" + format(x1) + "," + format(y1) + " A" + format(rx) + "," + format(ry) + " 0 0 0 "
-					+ format(x2) + " " + format(y2);
+			final String path = "M" + format(x1) + "," + format(y1) + " A" + format(rx) + "," + format(ry) + " 0 0 0 " + format(x2) + " " + format(y2);
 			final Element elt = (Element) document.createElement("path");
 			elt.setAttribute("d", path);
 			elt.setAttribute("fill", fill);
@@ -354,8 +352,7 @@ public class SvgGraphics {
 		return pendingAction.get(0);
 	}
 
-	public void svgRectangle(double x, double y, double width, double height, double rx, double ry, double deltaShadow,
-			String id) {
+	public void svgRectangle(double x, double y, double width, double height, double rx, double ry, double deltaShadow, String id) {
 		if (height <= 0 || width <= 0) {
 			return;
 			// To be restored when Teoz will be finished
@@ -385,6 +382,7 @@ public class SvgGraphics {
 		elt.setAttribute("height", format(height));
 		elt.setAttribute("fill", fill);
 		elt.setAttribute("style", getStyle());
+		elt.setAttribute("id", Integer.toString(RECT_INDEX++));
 		return elt;
 	}
 
@@ -441,9 +439,8 @@ public class SvgGraphics {
 
 	}
 
-	public void text(String text, double x, double y, String fontFamily, int fontSize, String fontWeight,
-			String fontStyle, String textDecoration, double textLength, Map<String, String> attributes,
-			String textBackColor) {
+	public void text(String text, double x, double y, String fontFamily, int fontSize, String fontWeight, String fontStyle, String textDecoration,
+			double textLength, Map<String, String> attributes, String textBackColor) {
 		if (hidden == false) {
 			final Element elt = (Element) document.createElement("text");
 			// required for web-kit based browsers
@@ -535,8 +532,7 @@ public class SvgGraphics {
 		// Get a TransformerFactory object.
 		TransformerFactory xformFactory = null;
 		try {
-			final Class<?> factoryClass = Class
-					.forName("com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl");
+			final Class<?> factoryClass = Class.forName("com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl");
 			xformFactory = (TransformerFactory) factoryClass.newInstance();
 		} catch (Exception e) {
 			xformFactory = TransformerFactory.newInstance();
@@ -625,21 +621,19 @@ public class SvgGraphics {
 				sb.append("L" + format(coord[0] + x) + "," + format(coord[1] + y) + " ");
 				ensureVisible(coord[0] + x + 2 * deltaShadow, coord[1] + y + 2 * deltaShadow);
 			} else if (type == USegmentType.SEG_QUADTO) {
-				sb.append("Q" + format(coord[0] + x) + "," + format(coord[1] + y) + " " + format(coord[2] + x) + ","
-						+ format(coord[3] + y) + " ");
+				sb.append("Q" + format(coord[0] + x) + "," + format(coord[1] + y) + " " + format(coord[2] + x) + "," + format(coord[3] + y) + " ");
 				ensureVisible(coord[0] + x + 2 * deltaShadow, coord[1] + y + 2 * deltaShadow);
 				ensureVisible(coord[2] + x + 2 * deltaShadow, coord[3] + y + 2 * deltaShadow);
 			} else if (type == USegmentType.SEG_CUBICTO) {
-				sb.append("C" + format(coord[0] + x) + "," + format(coord[1] + y) + " " + format(coord[2] + x) + ","
-						+ format(coord[3] + y) + " " + format(coord[4] + x) + "," + format(coord[5] + y) + " ");
+				sb.append("C" + format(coord[0] + x) + "," + format(coord[1] + y) + " " + format(coord[2] + x) + "," + format(coord[3] + y) + " "
+						+ format(coord[4] + x) + "," + format(coord[5] + y) + " ");
 				ensureVisible(coord[0] + x + 2 * deltaShadow, coord[1] + y + 2 * deltaShadow);
 				ensureVisible(coord[2] + x + 2 * deltaShadow, coord[3] + y + 2 * deltaShadow);
 				ensureVisible(coord[4] + x + 2 * deltaShadow, coord[5] + y + 2 * deltaShadow);
 			} else if (type == USegmentType.SEG_ARCTO) {
 				// A25,25 0,0 5,395,40
-				sb.append("A" + format(coord[0]) + "," + format(coord[1]) + " " + formatBoolean(coord[2]) + " "
-						+ formatBoolean(coord[3]) + " " + formatBoolean(coord[4]) + " " + format(coord[5] + x) + ","
-						+ format(coord[6] + y) + " ");
+				sb.append("A" + format(coord[0]) + "," + format(coord[1]) + " " + formatBoolean(coord[2]) + " " + formatBoolean(coord[3]) + " "
+						+ formatBoolean(coord[4]) + " " + format(coord[5] + x) + "," + format(coord[6] + y) + " ");
 				ensureVisible(coord[5] + coord[0] + x + 2 * deltaShadow, coord[6] + coord[1] + y + 2 * deltaShadow);
 			} else if (type == USegmentType.SEG_CLOSE) {
 				// Nothing
@@ -691,8 +685,7 @@ public class SvgGraphics {
 	}
 
 	public void curveto(double x1, double y1, double x2, double y2, double x3, double y3) {
-		currentPath.append("C" + format(x1) + "," + format(y1) + " " + format(x2) + "," + format(y2) + " " + format(x3)
-				+ "," + format(y3) + " ");
+		currentPath.append("C" + format(x1) + "," + format(y1) + " " + format(x2) + "," + format(y2) + " " + format(x3) + "," + format(y3) + " ");
 		ensureVisible(x1, y1);
 		ensureVisible(x2, y2);
 		ensureVisible(x3, y3);
@@ -789,8 +782,7 @@ public class SvgGraphics {
 				addFilter(filter, "feGaussianBlur", "result", "blurOut", "stdDeviation", "" + (2 * scale));
 				addFilter(filter, "feColorMatrix", "type", "matrix", "in", "blurOut", "result", "blurOut2", "values",
 						"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0");
-				addFilter(filter, "feOffset", "result", "blurOut3", "in", "blurOut2", "dx", "" + (4 * scale), "dy", ""
-						+ (4 * scale));
+				addFilter(filter, "feOffset", "result", "blurOut3", "in", "blurOut2", "dx", "" + (4 * scale), "dy", "" + (4 * scale));
 				addFilter(filter, "feBlend", "in", "SourceGraphic", "in2", "blurOut3", "mode", "normal");
 				defs.appendChild(filter);
 
