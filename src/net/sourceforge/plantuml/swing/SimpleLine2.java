@@ -74,7 +74,7 @@ class SimpleLine2 implements Comparable<SimpleLine2> {
 		if (generatedImage == null) {
 			return file.getName() + " (...pending...)";
 		}
-		final StringBuilder sb = new StringBuilder(generatedImage.getPngFile().getName());
+		final StringBuilder sb = new StringBuilder(generatedImage.getImage().getName());
 		sb.append(" ");
 		sb.append(generatedImage.getDescription());
 		return sb.toString();

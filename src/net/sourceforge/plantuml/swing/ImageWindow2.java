@@ -39,6 +39,7 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.Window;
@@ -130,6 +131,7 @@ class ImageWindow2 extends JFrame {
 	private SizeMode sizeMode = SizeMode.FULL_SIZE;
 
 	private int startX, startY;
+	private boolean mousePressed;
 
 	public ImageWindow2(SimpleLine2 simpleLine, final MainWindow2 main, ListModel listModel, int index) {
 		super(simpleLine.toString());
@@ -329,7 +331,7 @@ class ImageWindow2 extends JFrame {
 		if (generatedImage == null) {
 			return null;
 		}
-		final File png = generatedImage.getPngFile();
+		final File png = generatedImage.getImage();
 		if (png.getName().toLowerCase().endsWith("svg")) {
 			return buildScrollablePictureBySvg(png);
 		} else {
@@ -348,6 +350,44 @@ class ImageWindow2 extends JFrame {
 			svgCanvas.setEnablePanInteractor(true);
 			// svgCanvas.setEnableRotateInteractor(false);
 			svgCanvas.setEnableZoomInteractor(true);
+			MouseAdapter mouseListener = new MouseAdapter() {
+				private int sX, sY;
+				boolean mousePressed;
+
+				@Override
+				public void mouseReleased(MouseEvent e) {
+					mousePressed = false;
+				}
+
+				@Override
+				public void mousePressed(MouseEvent e) {
+					mousePressed = true;
+					Point point = e.getPoint();
+
+					System.out.println("mousePressed at " + point);
+
+					sX = point.x;
+
+					sY = point.y;
+				}
+
+				@Override
+				public void mouseDragged(MouseEvent e) {
+					Point p = e.getPoint();
+					AffineTransform at = new AffineTransform();
+					at.translate(p.x - sX, p.y - sY);
+					at.concatenate(svgCanvas.getRenderingTransform());
+					if (at.getScaleX() > 0.1) {
+						svgCanvas.setRenderingTransform(at);
+					}
+					sX = p.x;
+
+					sY = p.y;
+				}
+
+			};
+			svgCanvas.addMouseListener(mouseListener);
+			svgCanvas.addMouseMotionListener(mouseListener);
 			svgCanvas.addMouseWheelListener(new MouseWheelListener() {
 				private boolean isWheelDown(final MouseWheelEvent e) {
 					return e.getUnitsToScroll() > 0;
@@ -365,12 +405,12 @@ class ImageWindow2 extends JFrame {
 								double ty = isWheelDown(e) ? 100 : -100;
 								AffineTransform at = new AffineTransform();
 								if (e.isControlDown()) {
-									at.translate(tx, 0);
-									at.scale(1 - scale, 1 - scale);
+									at.translate(0, -ty);
 								} else if (e.isShiftDown()) {
 									at.translate(-tx, 0);
 								} else {
-									at.translate(0, -ty);
+									at.translate(tx, 0);
+									at.scale(1 - scale, 1 - scale);
 								}
 								at.concatenate(svgCanvas.getRenderingTransform());
 								if (at.getScaleX() > 0.1) {
@@ -390,7 +430,8 @@ class ImageWindow2 extends JFrame {
 							public void handleEvent(Event evt) {
 								SVGRectElement element = ((SVGRectElement) evt.getCurrentTarget());
 								for (int index = 0; index < element.getAttributes().getLength(); index++) {
-									System.out.println(String.format("Attribute %s: %s", element.getAttributes().item(index).getNodeName(),
+									System.out.println(String.format("Attribute %s: %s",
+											element.getAttributes().item(index).getNodeName(),
 											element.getAttributes().item(index).getNodeValue()));
 								}
 							}
@@ -433,8 +474,8 @@ class ImageWindow2 extends JFrame {
 							newHeight = (int) (newWidth * hwRate);
 						}
 						assert newWidth <= maxWidth && newHeight <= maxHeight;
-						ImageWindow2.this.setBounds((int) (dimension.getWidth() - newWidth) / 2, (int) (dimension.getHeight() - newHeight) / 2, newWidth,
-								newHeight);
+						ImageWindow2.this.setBounds((int) (dimension.getWidth() - newWidth) / 2,
+								(int) (dimension.getHeight() - newHeight) / 2, newWidth, newHeight);
 						ImageWindow2.this.invalidate();
 					}
 				}
@@ -467,11 +508,13 @@ class ImageWindow2 extends JFrame {
 			image = ImageIO.read(new File(png.getAbsolutePath()));
 			if (sizeMode == SizeMode.ZOOM_FIT) {
 				final Dimension imageDim = new Dimension(image.getWidth(), image.getHeight());
-				final Dimension newImgDim = ImageHelper.getScaledDimension(imageDim, scrollPane.getViewport().getSize());
+				final Dimension newImgDim = ImageHelper.getScaledDimension(imageDim,
+						scrollPane.getViewport().getSize());
 				image = ImageHelper.getScaledInstance(image, newImgDim, getHints(), true);
 			} else if (sizeMode == SizeMode.WIDTH_FIT) {
 				final Dimension imageDim = new Dimension(image.getWidth(), image.getHeight());
-				final Dimension newImgDim = ImageHelper.getScaledDimensionWidthFit(imageDim, scrollPane.getViewport().getSize());
+				final Dimension newImgDim = ImageHelper.getScaledDimensionWidthFit(imageDim,
+						scrollPane.getViewport().getSize());
 				image = ImageHelper.getScaledInstance(image, newImgDim, getHints(), false);
 			} else if (zoomFactor != 0) {
 				final Dimension imageDim = new Dimension(image.getWidth(), image.getHeight());
@@ -481,7 +524,8 @@ class ImageWindow2 extends JFrame {
 		} catch (IOException ex) {
 			final String msg = "Error reading file: " + ex.toString();
 			final TextBlockBackcolored error = GraphicStrings.createForError(Arrays.asList(msg), false);
-			final ImageBuilder imageBuilder = new ImageBuilder(new ColorMapperIdentity(), 1.0, error.getBackcolor(), null, null, 0, 0, null, false);
+			final ImageBuilder imageBuilder = new ImageBuilder(new ColorMapperIdentity(), 1.0, error.getBackcolor(),
+					null, null, 0, 0, null, false);
 			imageBuilder.setUDrawable(error);
 			final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			try {
@@ -519,7 +563,8 @@ class ImageWindow2 extends JFrame {
 	}
 
 	private RenderingHints getHints() {
-		final RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		final RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION,
+				RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		hints.put(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		hints.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 		return hints;
@@ -538,7 +583,7 @@ class ImageWindow2 extends JFrame {
 		if (generatedImage == null) {
 			return;
 		}
-		final File png = generatedImage.getPngFile();
+		final File png = generatedImage.getImage();
 		final Image image = Toolkit.getDefaultToolkit().createImage(png.getAbsolutePath());
 		final ImageSelection imgSel = new ImageSelection(image);
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(imgSel, null);

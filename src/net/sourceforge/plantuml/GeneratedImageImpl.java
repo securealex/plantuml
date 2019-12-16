@@ -58,7 +58,7 @@ public class GeneratedImageImpl implements GeneratedImage {
 		this.status = status;
 	}
 
-	public File getPngFile() {
+	public File getImage() {
 		return pngFile;
 	}
 
@@ -80,7 +80,7 @@ public class GeneratedImageImpl implements GeneratedImage {
 	}
 
 	public int compareTo(GeneratedImage this2) {
-		final int cmp = this.pngFile.compareTo(this2.getPngFile());
+		final int cmp = this.pngFile.compareTo(this2.getImage());
 		if (cmp != 0) {
 			return cmp;
 		}

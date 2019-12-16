@@ -39,7 +39,7 @@ import java.io.File;
 
 public interface GeneratedImage extends Comparable<GeneratedImage> {
 
-	public File getPngFile();
+	public File getImage();
 
 	public String getDescription();
 

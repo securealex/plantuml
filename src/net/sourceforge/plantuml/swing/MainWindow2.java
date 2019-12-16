@@ -366,7 +366,7 @@ public class MainWindow2 extends JFrame {
 				changed = true;
 				final Future<List<GeneratedImage>> future = line.getFuture();
 				for (GeneratedImage im : future.get()) {
-					mayRefreshImageWindow(im.getPngFile());
+					mayRefreshImageWindow(im.getImage());
 					final SimpleLine2 simpleLine = SimpleLine2.fromGeneratedImage(line.getFile(), im);
 					currentDirectoryListing2.add(simpleLine);
 				}
@@ -390,7 +390,7 @@ public class MainWindow2 extends JFrame {
 			if (win.getSimpleLine().getGeneratedImage() == null) {
 				continue;
 			}
-			if (pngFile.equals(win.getSimpleLine().getGeneratedImage().getPngFile())) {
+			if (pngFile.equals(win.getSimpleLine().getGeneratedImage().getImage())) {
 				win.refreshImage(true);
 			}
 		}
